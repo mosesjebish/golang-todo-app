@@ -22,8 +22,9 @@ func NewServer(c *mongo.Client) *Server {
 func (s *Server) Run() {
 	r := mux.NewRouter()
 	r.HandleFunc("/todo", s.CreateTodo).Methods(http.MethodPost)
-	r.HandleFunc("/todo", s.GetTodoFromQuery).Methods(http.MethodGet)
+	r.HandleFunc("/todo", s.GetAllTodos).Methods(http.MethodGet)
 	r.HandleFunc("/todo/{id}", s.GetTodoFromPathVariable).Methods(http.MethodGet)
+	r.HandleFunc("/todo", s.UpdateTodo).Methods(http.MethodPatch)
 
 	srv := &http.Server{
 		Addr:    ":7000",

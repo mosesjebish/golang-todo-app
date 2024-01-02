@@ -13,9 +13,10 @@ import (
 )
 
 type Task struct {
-	Title       string
-	Description string
-	IsDone      bool
+	Id          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	IsDone      bool               `json:"is_done"`
 }
 
 type Response struct {
@@ -29,6 +30,10 @@ func NewResponse(body any, err error) *Response {
 		Err:  err,
 	}
 }
+
+// TODO: Add logger
+// TODO: Handle errors better
+// TODO: Refactor code and make it leaner
 
 func (s *Server) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	coll := s.client.Database("lazydev").Collection("tasks")
@@ -101,4 +106,47 @@ func (s *Server) GetTodoFromPathVariable(w http.ResponseWriter, r *http.Request)
 	}
 
 	json.NewEncoder(w).Encode(NewResponse(result, nil))
+}
+
+func (s *Server) GetAllTodos(w http.ResponseWriter, r *http.Request) {
+	coll := s.client.Database("lazydev").Collection("tasks")
+
+	var tasks []Task
+
+	filter := bson.D{{}}
+	cursor, err := coll.Find(context.Background(), filter)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(NewResponse(nil, err))
+		return
+	}
+
+	if err = cursor.All(context.Background(), &tasks); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(NewResponse(nil, err))
+		return
+	}
+
+	json.NewEncoder(w).Encode(NewResponse(tasks, nil))
+
+}
+
+func (s *Server) UpdateTodo(w http.ResponseWriter, r *http.Request) {
+	coll := s.client.Database("lazydev").Collection("tasks")
+
+	var newTask Task
+
+	json.NewDecoder(r.Body).Decode(&newTask)
+
+	filter := bson.D{{Key: "_id", Value: newTask.Id}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "isdone", Value: newTask.IsDone}}}}
+	_, err := coll.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		fmt.Println("error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(NewResponse(nil, err))
+		return
+	}
+
+	json.NewEncoder(w).Encode(NewResponse(newTask, nil))
 }
